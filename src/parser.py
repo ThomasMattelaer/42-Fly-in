@@ -3,5 +3,4 @@ class Parser():
         self._file = file
 
     def read_file(self, file: str) -> bool:
-        
-
+        return True
