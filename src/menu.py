@@ -1,33 +1,21 @@
-from simple_term_menu import TerminalMenu
-from typing import Callable, Any
+from simple_term_menu import TerminalMenu  # type: ignore
 import os
 
 
 class Menu():
-
     def start(self, options: list[str]) -> str:
         terminal_menu = TerminalMenu(
             options,
             title="Please select a map:",
             clear_screen=True,
-            preview_command="bat --color=always {}",
-            preview_size=0.1,
             raise_error_on_interrupt=True,
             menu_cursor="-> ",
             menu_cursor_style=("fg_blue", "bold"),
             menu_highlight_style=("bg_purple", )
-            )
+        )
         entry_index = terminal_menu.show()
         result = options[entry_index]
         return result
-
-    def dict_menu(self, dict_options: dict[str, Callable]) -> Any:
-        selection = self.start(list(dict_options.keys()))
-        selected_function = dict_options.get(selection)
-        if selected_function is not None:
-            return selected_function()
-        else:
-            raise ValueError(f"Invalid Option: {selection}")
 
     def list_files(self, directory: str) -> list[str]:
         files = [file for file in os.listdir(directory)]
@@ -43,3 +31,5 @@ class Menu():
                 current_path = os.path.dirname(current_path)
             else:
                 current_path = os.path.join(current_path, result)
+        if (os.path.isfile(current_path)):
+            pass  # calling parser with the file.
