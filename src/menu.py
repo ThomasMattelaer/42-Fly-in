@@ -1,4 +1,5 @@
 from simple_term_menu import TerminalMenu  # type: ignore
+from parser import Parser
 import os
 
 
@@ -32,4 +33,4 @@ class Menu():
             else:
                 current_path = os.path.join(current_path, result)
         if (os.path.isfile(current_path)):
-            pass  # calling parser with the file.
+            Parser(current_path)
