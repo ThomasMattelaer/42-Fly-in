@@ -1,6 +1,8 @@
 from simple_term_menu import TerminalMenu  # type: ignore
-from parser import Parser
+from parser import Parser, MapModel
+from map import MapVisualiser
 import os
+import sys
 
 
 class Menu():
@@ -33,4 +35,11 @@ class Menu():
             else:
                 current_path = os.path.join(current_path, result)
         if (os.path.isfile(current_path)):
-            Parser(current_path)
+            try:
+                parser = Parser(current_path)
+                map_data: MapModel = parser.data
+            except ValueError as e:
+                print(f"Error: {e}", file=sys.stderr)
+                sys.exit(0)
+            map = MapVisualiser(map_data)
+            map.run()

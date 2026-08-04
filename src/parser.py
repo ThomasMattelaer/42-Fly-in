@@ -6,8 +6,8 @@ import os
 
 class HubModel(BaseModel):
     name: str
-    x: int = Field(ge=0)
-    y: int = Field(ge=0)
+    x: int
+    y: int
     metadata: dict[str, Any]
 
     @model_validator(mode='after')
@@ -78,7 +78,6 @@ class Parser():
                     raise ValueError("There must be exactly one end_hub")
             elif key.lower() == "connection":
                 payload["connections"].append(self._parse_connection(data))
-        print(payload)
         try:
             return MapModel(
                 name=payload["name"],
@@ -99,12 +98,16 @@ class Parser():
             raise ValueError("Invalid Format")
         name, x_str, y_str = left_elements
         name, x, y = name, int(x_str), int(y_str)
-        return HubModel(
-            name=name,
-            x=x,
-            y=y,
-            metadata=self.parse_metadata(optional)
-        )
+        try:
+            return HubModel(
+                name=name,
+                x=x,
+                y=y,
+                metadata=self.parse_metadata(optional)
+            )
+        except ValidationError as e:
+            raise ValueError(f"Error in the file: {self._file}:"
+                             f"{e.errors()[0]['msg']}")
 
     def _parse_connection(self, data: str) -> ConnectionModel:
         mandatory, _, optional = data.partition("[")
@@ -112,11 +115,15 @@ class Parser():
         if len(left_elements) != 2:
             raise ValueError("Invalid Format")
         zone_1, zone_2 = left_elements
-        return ConnectionModel(
-            zone1=zone_1,
-            zone2=zone_2,
-            metadata=self.parse_metadata(optional)
-        )
+        try:
+            return ConnectionModel(
+                zone1=zone_1,
+                zone2=zone_2,
+                metadata=self.parse_metadata(optional)
+            )
+        except ValidationError as e:
+            raise ValueError(f"Error in the file: {self._file}:"
+                             f"{e.errors()[0]['msg']}")
 
     def parse_metadata(self, data: str) -> dict[str, str]:
         metadata = {}

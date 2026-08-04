@@ -3,3 +3,4 @@ pydantic
 flake8
 mypy
 simple_term_menu
+pygame
