@@ -7,17 +7,19 @@ import sys
 class SimulationEngine:
     def __init__(self, map_data: MapModel) -> None:
         self.map_data = map_data
-        self.drones: list[Drone]
+        self.drones: list[Drone] = self.init_drones()
 
-    def init_drones(self) -> None:
+    def init_drones(self) -> list[Drone]:
         start_hub = map_data.start_hub
+        drones: list[Drone] = []
         for i in range(self.map_data.drones):
             drone = Drone(drone_id=i,
                           current_hub=start_hub.name,
                           pos_x=start_hub.x,
                           pos_y=start_hub.y
                           )
-            self.drones.append(drone)
+            drones.append(drone)
+        return drones
 
 
 if __name__ == "__main__":
@@ -25,7 +27,6 @@ if __name__ == "__main__":
     try:
         map_data = menu.select_map_menu()
         simulation = SimulationEngine(map_data)
-        simulation.init_drones()
         map = MapVisualiser(map_data, simulation)
         map.run()
     except KeyboardInterrupt:
