@@ -1,10 +1,18 @@
 from typing import Optional
 class Drone ():
 
-    def __init__(self):
-        self.drone_id
-        self.current_hub
-        self.target_hub
-        self.in_transit
+    def __init__(self,
+                 drone_id: int,
+                 current_hub: str,
+                 target_hub: Optional[str],
+                 pos_x: int,
+                 pos_y: int,
+                 in_transit: bool) -> None:
+        self.drone_id = drone_id
+        self.current_hub = current_hub
+        self.target_hub = target_hub
+        self.pos_x = pos_x
+        self.pos_y = pos_y
+        self.in_transit = in_transit
 
-    def 
+    def move()->None:

@@ -1,6 +1,5 @@
 from simple_term_menu import TerminalMenu  # type: ignore
 from parser import Parser, MapModel
-from map import MapVisualiser
 import os
 import sys
 
@@ -25,9 +24,8 @@ class Menu():
         is_root_maps = os.path.abspath(directory) == os.path.abspath("./maps")
         return files if is_root_maps else files + ["back"]
 
-    def display_all_menu(self, initial_directory: str = "./maps") -> None:
+    def select_map_menu(self, initial_directory: str = "./maps") -> MapModel:
         current_path: str = initial_directory
-        print(f"current : {current_path}, dir: {os.path.isdir(current_path)}")
         while (os.path.isdir(current_path)):
             result = self.start(self.list_files(current_path))
             if result == "back":
@@ -41,5 +39,4 @@ class Menu():
             except ValueError as e:
                 print(f"Error: {e}", file=sys.stderr)
                 sys.exit(0)
-            map = MapVisualiser(map_data)
-            map.run()
+        return map_data

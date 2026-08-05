@@ -1,5 +1,6 @@
 import pygame
 from parser import MapModel
+from drone import Drone
 
 
 class MapVisualiser():
@@ -26,10 +27,11 @@ class MapVisualiser():
                     running = False
             screen.fill("dark grey")
             self.draw_drones(screen)
+            self.render(screen)
             pygame.display.flip()
             clock.tick(60)
         pygame.quit()
 
-    def draw_drones(self, screen: pygame.Surface) -> None:
+    def draw_drones(self, screen: pygame.Surface, drone: Drone) -> None:
         for x in range(self.map_data.drones):
-            screen.blit(self.drone_img, (10 + (x * 10), self.height // 2))
+            screen.blit(self.drone_img, (map_data))
