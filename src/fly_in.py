@@ -12,13 +12,12 @@ class SimulationEngine:
     def init_drones(self) -> None:
         start_hub = map_data.start_hub
         for i in range(self.map_data.drones):
-            drone = Drone(id=i,
+            drone = Drone(drone_id=i,
                           current_hub=start_hub.name,
                           pos_x=start_hub.x,
-                          pos_y=start_hub.y,
-                          in_transit=False)
+                          pos_y=start_hub.y
+                          )
             self.drones.append(drone)
-
 
 
 if __name__ == "__main__":
@@ -27,6 +26,8 @@ if __name__ == "__main__":
         map_data = menu.select_map_menu()
         simulation = SimulationEngine(map_data)
         simulation.init_drones()
+        map = MapVisualiser(map_data, simulation)
+        map.run()
     except KeyboardInterrupt:
         print("\nKeyboard Interrupt error")
         sys.exit(0)

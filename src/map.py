@@ -1,15 +1,18 @@
 import pygame
 from parser import MapModel
 from drone import Drone
+from fly_in import SimulationEngine
 
 
 class MapVisualiser():
     def __init__(self,
                  map_data: MapModel,
+                 simulation: SimulationEngine,
                  width: int = 1280,
                  height: int = 720
                  ) -> None:
         self.map_data = map_data
+        self.simulation = simulation
         self.width = width
         self.height = height
         self.drone_img: pygame.Surface
