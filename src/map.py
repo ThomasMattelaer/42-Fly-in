@@ -1,9 +1,44 @@
 import pygame
-from parser import MapModel
+from parser import MapModel, HubModel
 from drone import Drone
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from fly_in import SimulationEngine
+
+
+class CoordinateConverter():
+    def __init__(self,
+                 map_data: MapModel,
+                 screen_width: int = 1280,
+                 screen_height: int = 720,
+                 margin: int = 100
+                 ) -> None:
+        self.screen_width = screen_width
+        self.screen_height = screen_height
+        self.margin = margin
+
+        all_hubs: list[HubModel] = [map_data.start_hub, map_data.end_hub
+                                    ] + map_data.hubs
+        x_coords = [hub.x for hub in all_hubs]
+        y_coords = [hub.y for hub in all_hubs]
+        min_x, max_x = min(x_coords), max(x_coords)
+        min_y, max_y = min(y_coords), max(y_coords)
+        map_width = max(max_x - min_x, 1)
+        map_height = max(max_y - min_y, 1)
+        usable_width = screen_width - (2 * margin)
+        usable_height = screen_height - (2 * margin)
+        scale_x = usable_width / map_width
+        scale_y = usable_height / map_height
+        self.scale = min(scale_x, scale_y)
+        self.offset_x = margin + (usable_width - (map_width * self.scale)
+                                  ) / 2 - (min_x * self.scale)
+        self.offset_y = margin + (usable_height - (map_height * self.scale)
+                                  ) / 2 - (min_y * self.scale)
+
+    def to_pixels(self, x: int, y: int) -> tuple[int, int]:
+        pixel_x = int(x * self.scale + self.offset_x)
+        pixel_y = int(y * self.scale + self.offset_y)
+        return (pixel_x, pixel_y)
 
 
 class MapVisualiser():
@@ -18,20 +53,23 @@ class MapVisualiser():
         self.width = width
         self.height = height
         self.drone_img: pygame.Surface
+        self.converter = CoordinateConverter(map_data, width, height)
+
 
     def run(self):
         pygame.init()
+        font = pygame.font.SysFont('Arial', 12)
         screen = pygame.display.set_mode((self.width, self.height))
         clock = pygame.time.Clock()
         running = True
-        print(f"DRONES:{self.simulation.drones}")
         drone_img = pygame.image.load("./ressources/drone.png").convert_alpha()
         self.drone_img = pygame.transform.scale(drone_img, (50, 50))
         while running:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
-            screen.fill("dark grey")
+            screen.fill("cadetblue4")
+            self.draw_hubs(screen, font)
             self.draw_drones(screen, self.simulation.drones)
             pygame.display.flip()
             clock.tick(60)
@@ -39,4 +77,18 @@ class MapVisualiser():
 
     def draw_drones(self, screen: pygame.Surface, drones: list[Drone]) -> None:
         for drone in (drones):
-            screen.blit(self.drone_img, (drone.pos_x, drone.pos_y))
+            coords_drone = self.converter.to_pixels(drone.pos_x, drone.pos_y)
+            screen.blit(self.drone_img, coords_drone)
+
+    def draw_hubs(self, screen: pygame.Surface, font: pygame.font.Font) -> None:
+        map_data = self.map_data
+        all_hub = [map_data.start_hub, map_data.end_hub] + map_data.hubs
+
+        for hub in all_hub:
+            coords_hub = self.converter.to_pixels(hub.x, hub.y)
+            text = font.render(hub.name, True, "white")
+            text_rect = text.get_rect(centerx=coords_hub[0], top=coords_hub[1]
+                                      + 35)
+            pygame.draw.circle(screen, hub.metadata.get("color", "blue"),
+                               coords_hub, 30)
+            screen.blit(text, text_rect)
