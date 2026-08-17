@@ -114,7 +114,7 @@ class Parser():
         left_elements = mandatory.split("-")
         if len(left_elements) != 2:
             raise ValueError("Invalid Format")
-        zone_1, zone_2 = left_elements
+        zone_1, zone_2 = [elem.strip() for elem in left_elements]
         try:
             return ConnectionModel(
                 zone1=zone_1,

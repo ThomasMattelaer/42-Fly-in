@@ -55,7 +55,6 @@ class MapVisualiser():
         self.drone_img: pygame.Surface
         self.converter = CoordinateConverter(map_data, width, height)
 
-
     def run(self):
         pygame.init()
         font = pygame.font.SysFont('Arial', 12)
@@ -69,21 +68,38 @@ class MapVisualiser():
                 if event.type == pygame.QUIT:
                     running = False
             screen.fill("cadetblue4")
+            self.draw_connections(screen)
             self.draw_hubs(screen, font)
             self.draw_drones(screen, self.simulation.drones)
+            for drone in self.simulation.drones:
+                print(drone.pos_x, drone.pos_y)
             pygame.display.flip()
+            self.move_drones(self.simulation.drones)
             clock.tick(60)
         pygame.quit()
+
+    def move_drones(self, drones: list[Drone]) -> None:
+        for drone in drones:
+            if drone.target_hub:
+                drone.current_hub = drone.target_hub
+            next_hub_name = self.get_next_hub_name(drone.current_hub)
+            if next_hub_name:
+                drone.target_hub = next_hub_name
+            target_hub = self.get_hub(next_hub_name)
+            if target_hub:
+                drone.pos_x = target_hub.x
+                drone.pos_y = target_hub.y
 
     def draw_drones(self, screen: pygame.Surface, drones: list[Drone]) -> None:
         for drone in (drones):
             coords_drone = self.converter.to_pixels(drone.pos_x, drone.pos_y)
             screen.blit(self.drone_img, coords_drone)
 
-    def draw_hubs(self, screen: pygame.Surface, font: pygame.font.Font) -> None:
+    def draw_hubs(self,
+                  screen: pygame.Surface,
+                  font: pygame.font.Font) -> None:
         map_data = self.map_data
         all_hub = [map_data.start_hub, map_data.end_hub] + map_data.hubs
-
         for hub in all_hub:
             coords_hub = self.converter.to_pixels(hub.x, hub.y)
             text = font.render(hub.name, True, "white")
@@ -92,3 +108,31 @@ class MapVisualiser():
             pygame.draw.circle(screen, hub.metadata.get("color", "blue"),
                                coords_hub, 30)
             screen.blit(text, text_rect)
+
+    def draw_connections(self, screen: pygame.Surface) -> None:
+        connections = self.map_data.connections
+        for connection in connections:
+            zone1 = self.get_hub(connection.zone1)
+            zone2 = self.get_hub(connection.zone2)
+            if zone1 and zone2:
+                coord1 = self.converter.to_pixels(zone1.x, zone1.y)
+                coord2 = self.converter.to_pixels(zone2.x, zone2.y)
+                pygame.draw.line(screen, "grey", coord1, coord2)
+
+    def get_hub(self, hub_name: str) -> HubModel:
+        map_data = self.map_data
+        all_hubs = [map_data.start_hub, map_data.end_hub] + map_data.hubs
+        hubs_by_name = {hub.name: hub for hub in all_hubs}
+        if hub_name not in hubs_by_name:
+            raise ValueError(f"Hub: {hub_name} hasn't been found")
+        return hubs_by_name[hub_name]
+
+    def get_next_hub_name(self, current_hub_name: str) -> str:
+        """Trouve la destination reliée à current_hub_name
+        dans les connexions."""
+        for conn in self.map_data.connections:
+            if conn.zone1 == current_hub_name:
+                return conn.zone2
+            if conn.zone2 == current_hub_name:
+                return conn.zone1
+        return ""
