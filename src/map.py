@@ -106,5 +106,3 @@ class MapVisualiser():
                 coord1 = self.converter.to_pixels(zone1.x, zone1.y)
                 coord2 = self.converter.to_pixels(zone2.x, zone2.y)
                 pygame.draw.line(screen, "grey", coord1, coord2)
-
-

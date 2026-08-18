@@ -2,6 +2,7 @@ from menu import Menu, MapModel
 from parser import HubModel
 from drone import Drone
 from map import MapVisualiser
+from pathfinding import dijkstra_distance
 import sys
 
 
@@ -54,6 +55,7 @@ if __name__ == "__main__":
     menu = Menu()
     try:
         map_data = menu.select_map_menu()
+        dijkstra_distance(map_data, "goal")
         simulation = SimulationEngine(map_data)
         map = MapVisualiser(map_data, simulation)
         map.run()
