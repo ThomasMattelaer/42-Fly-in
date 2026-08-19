@@ -26,15 +26,37 @@ class SimulationEngine:
 
     def move_drones(self, drones: list[Drone]) -> None:
         for drone in drones:
-            neighbors = get_neighbors(self.map_data, drone.current_hub)
-            target = min(neighbors,
-                         key=lambda hub_name: self.pathfinding[hub_name])
-            drone.target_hub = target
-            target_obj = self.get_hub(target)
-            if target_obj:
-                drone.pos_x = target_obj.x
-                drone.pos_y = target_obj.y
-                drone.current_hub = drone.target_hub
+            if drone.in_transit:
+                if drone.target_hub is not None:
+                    target_obj = self.get_hub(drone.target_hub)
+                    if target_obj:
+                        drone.pos_x = target_obj.x
+                        drone.pos_y = target_obj.y
+                        drone.current_hub = drone.target_hub
+                    drone.in_transit = False
+            else:
+                neighbors = get_neighbors(self.map_data, drone.current_hub)
+                possible_choices = neighbors + [drone.current_hub]
+                target = min(
+                    possible_choices,
+                    key=lambda hub_name: self.pathfinding[hub_name])
+                drone.target_hub = target
+                target_obj = self.get_hub(drone.target_hub)
+                if target_obj:
+                    origin_obj = self.get_hub(drone.current_hub)
+                    is_restricted = target_obj.metadata.get(
+                        "zone") == "restricted"
+                    if is_restricted and drone.target_hub != drone.current_hub:
+                        drone.pos_x = int(origin_obj.x +
+                                          (target_obj.x - origin_obj.x) * 0.5)
+                        drone.pos_y = int(origin_obj.y +
+                                          (target_obj.y - origin_obj.y) * 0.5)
+                        drone.in_transit = True
+                    else:
+                        drone.pos_x = target_obj.x
+                        drone.pos_y = target_obj.y
+                        drone.current_hub = drone.target_hub
+                        drone.in_transit = False
 
     def get_next_hub_name(self, current_hub_name: str) -> str:
         """Trouve la destination reliée à current_hub_name

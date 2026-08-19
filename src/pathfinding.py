@@ -17,11 +17,11 @@ def dijkstra_distance(map_data: MapModel, goal_hub: str) -> dict[str, int]:
         if (dist > distances[current_hub]):
             continue
         for neighbor in get_neighbors(map_data, current_hub):
-            weight = get_hub_weight(all_hubs, current_hub)
-            dist = dist + weight
-            if dist < distances[neighbor]:
-                distances[neighbor] = dist
-                heapq.heappush(heap, (dist, neighbor))
+            weight = get_hub_weight(all_hubs, neighbor)
+            new_dist = dist + weight
+            if new_dist < distances[neighbor]:
+                distances[neighbor] = new_dist
+                heapq.heappush(heap, (new_dist, neighbor))
     return distances
 
 
