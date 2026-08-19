@@ -2,7 +2,7 @@ from menu import Menu, MapModel
 from parser import HubModel
 from drone import Drone
 from map import MapVisualiser
-from pathfinding import dijkstra_distance
+from pathfinding import dijkstra_distance, get_neighbors
 import sys
 
 
@@ -10,6 +10,7 @@ class SimulationEngine:
     def __init__(self, map_data: MapModel) -> None:
         self.map_data = map_data
         self.drones: list[Drone] = self.init_drones()
+        self.pathfinding = dijkstra_distance(map_data, map_data.end_hub.name)
 
     def init_drones(self) -> list[Drone]:
         start_hub = map_data.start_hub
@@ -25,14 +26,15 @@ class SimulationEngine:
 
     def move_drones(self, drones: list[Drone]) -> None:
         for drone in drones:
-            next_destination = self.get_next_hub_name(drone.current_hub)
-            if next_destination:
-                drone.target_hub = next_destination
-                target_obj = self.get_hub(next_destination)
-                if target_obj:
-                    drone.pos_x = target_obj.x
-                    drone.pos_y = target_obj.y
-                    drone.current_hub = drone.target_hub
+            neighbors = get_neighbors(self.map_data, drone.current_hub)
+            target = min(neighbors,
+                         key=lambda hub_name: self.pathfinding[hub_name])
+            drone.target_hub = target
+            target_obj = self.get_hub(target)
+            if target_obj:
+                drone.pos_x = target_obj.x
+                drone.pos_y = target_obj.y
+                drone.current_hub = drone.target_hub
 
     def get_next_hub_name(self, current_hub_name: str) -> str:
         """Trouve la destination reliée à current_hub_name
@@ -55,9 +57,9 @@ if __name__ == "__main__":
     menu = Menu()
     try:
         map_data = menu.select_map_menu()
-        dijkstra_distance(map_data, "goal")
         simulation = SimulationEngine(map_data)
         map = MapVisualiser(map_data, simulation)
+        print(simulation.pathfinding)
         map.run()
     except KeyboardInterrupt:
         print("\nKeyboard Interrupt error")
