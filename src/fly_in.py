@@ -27,29 +27,26 @@ class SimulationEngine:
     def move_drones(self, drones: list[Drone]) -> None:
         occupancy:  dict[tuple[str, str], int] = {}
         for drone in drones:
+            if drone.current_hub == self.map_data.end_hub.name:
+                continue
             neighbors = get_neighbors(self.map_data, drone.current_hub)
             target = min(
                 neighbors, key=lambda hub_name: self.pathfinding[hub_name]
                 )
-            if (self.is_conn_free(drone.current_hub, target, occupancy)
-                    and self.is_hub_free(target)):
-                drone.target_hub = target
+            drone.target_hub = target
+            conneciton_ok = self.is_conn_free(drone.current_hub, target,
+                                              occupancy)
+            hub_ok = self.is_hub_free(target)
+            if (conneciton_ok and hub_ok):
+                self.add_drone_to_connection(drone, target, occupancy)
                 target_obj = self.get_hub(drone.target_hub)
                 if target_obj:
-                    origin_obj = self.get_hub(drone.current_hub)
-                    is_restricted = target_obj.metadata.get(
-                        "zone") == "restricted"
-                    if is_restricted and drone.target_hub != drone.current_hub:
-                        drone.pos_x = int(origin_obj.x +
-                                            (target_obj.x - origin_obj.x) * 0.5)
-                        drone.pos_y = int(origin_obj.y +
-                                            (target_obj.y - origin_obj.y) * 0.5)
-                        drone.in_transit = True
-                    else:
-                        drone.pos_x = target_obj.x
-                        drone.pos_y = target_obj.y
-                        drone.current_hub = drone.target_hub
-                        drone.in_transit = False
+                    self.add_drones_to_hub(drone, target_obj)
+                    drone.pos_x = target_obj.x
+                    drone.pos_y = target_obj.y
+                    drone.current_hub = target
+            else:
+                continue
 
     def get_hub(self, hub_name: str) -> HubModel:
         map_data = self.map_data
@@ -78,13 +75,25 @@ class SimulationEngine:
                 return connection.metadata.get("max_link_capacity", 1)
         return 0
 
+    def add_drone_to_connection(self,
+                                drone: Drone,
+                                target: str,
+                                occupancy: dict[tuple[str, str], int]) -> None:
+        a, b = sorted((drone.current_hub, target))
+        occupancy[(a, b)] = occupancy.get((a, b), 0) + 1
+
+    def add_drones_to_hub(self, drone: Drone, target_obj: HubModel) -> None:
+        current_hub = self.get_hub(drone.current_hub)
+        current_hub.occupancy -= 1
+        target_obj.occupancy += 1
+
     def is_hub_free(self, target_hub: str) -> bool:
         """Check wether or not if the hub is available"""
         if target_hub == self.map_data.end_hub.name:
             return True
         for hub in self.map_data.hubs:
             if hub.name == target_hub:
-                return hub.occupancy < hub.metadata.get("max_drones", 1)
+                return hub.occupancy < int(hub.metadata.get("max_drones", 1))
         return False
 
 
