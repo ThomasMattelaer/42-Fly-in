@@ -8,6 +8,7 @@ class HubModel(BaseModel):
     name: str
     x: int
     y: int
+    occupancy: int
     metadata: dict[str, Any]
 
     @model_validator(mode='after')
@@ -20,7 +21,7 @@ class HubModel(BaseModel):
 class ConnectionModel(BaseModel):
     zone1: str
     zone2: str
-    metadata: dict[str, str]
+    metadata: dict[str, int]
 
     @model_validator(mode='after')
     def validate_data(self) -> "ConnectionModel":
@@ -103,6 +104,7 @@ class Parser():
                 name=name,
                 x=x,
                 y=y,
+                occupancy=0,
                 metadata=self.parse_metadata(optional)
             )
         except ValidationError as e:
@@ -125,7 +127,7 @@ class Parser():
             raise ValueError(f"Error in the file: {self._file}:"
                              f"{e.errors()[0]['msg']}")
 
-    def parse_metadata(self, data: str) -> dict[str, str]:
+    def parse_metadata(self, data: str) -> dict[str, Any]:
         metadata = {}
         right_elements = data.strip("]").split()
         for element in right_elements:

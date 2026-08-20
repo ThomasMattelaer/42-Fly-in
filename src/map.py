@@ -61,6 +61,7 @@ class MapVisualiser():
         screen = pygame.display.set_mode((self.width, self.height))
         clock = pygame.time.Clock()
         running = True
+        turn = 0
         drone_img = pygame.image.load("./ressources/drone.png").convert_alpha()
         self.drone_img = pygame.transform.scale(drone_img, (40, 40))
         while running:
@@ -70,13 +71,15 @@ class MapVisualiser():
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_SPACE:
                         self.simulation.move_drones(self.simulation.drones)
-            screen.fill("cadetblue4")
+                        turn += 1
+            screen.fill("midnightblue")
             mouse_pos = pygame.mouse.get_pos()
             hovered_hub = self.get_hovered_hub(mouse_pos)
             self.draw_connections(screen)
             self.draw_hubs(screen, hovered_hub, font)
             self.draw_drones(screen, self.simulation.drones)
             self.draw_bottom_info_bar(screen, font, hovered_hub)
+            self.draw_turn_counter(screen, font, turn)
             pygame.display.flip()
             clock.tick(60)
         pygame.quit()
@@ -103,12 +106,12 @@ class MapVisualiser():
             if hub == hovered_hub:
                 pygame.draw.rect(
                     screen, hub.metadata.get("color", "blue"),
-                    hub_rect, border_radius=10
+                    hub_rect, border_radius=10, width=2
                 )
             else:
                 pygame.draw.rect(
                     screen, hub.metadata.get("color", "blue"),
-                    hub_rect, width=2, border_radius=10
+                    hub_rect, border_radius=10
                 )
             screen.blit(text, text_rect)
 
@@ -135,7 +138,7 @@ class MapVisualiser():
         max_d = hovered_hub.metadata.get("max_drones", "//")
         text = (f"Hub: {hovered_hub.name} | Zone: {zone} | Max Drones:"
                 f"{max_d})")
-        text_surface = font.render(text, True, "moccasin")
+        text_surface = font.render(text, True, "antiquewhite2")
         text_rect = text_surface.get_rect()
         padding_x = 20
         padding_y = 10
@@ -150,7 +153,7 @@ class MapVisualiser():
             box_rect, border_radius=8
         )
         pygame.draw.rect(
-            screen, "moccasin",
+            screen, "antiquewhite2",
             box_rect, width=2, border_radius=8
         )
         text_rect.center = box_rect.center
@@ -167,3 +170,18 @@ class MapVisualiser():
             if hub_rect.collidepoint(mouse_pos):
                 return hub
         return None
+
+    def draw_turn_counter(self,
+                          screen: pygame.Surface,
+                          font: pygame.font.Font,
+                          turn: int) -> None:
+        """Display the turn counter of the simulaiton"""
+        text_surface = font.render(
+            f"Turn : {turn}", True, "white"
+        )
+        screen_width = screen.get_width()
+        margin = 30
+        text_rect = text_surface.get_rect(
+            topright=(screen_width - margin, margin)
+        )
+        screen.blit(text_surface, text_rect)
