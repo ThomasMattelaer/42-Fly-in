@@ -58,8 +58,13 @@ class MapVisualiser():
     def run(self):
         pygame.init()
         font = pygame.font.SysFont('Calibri', 12, bold=True)
+        pygame.display.set_caption('FLY-IN')
+        icon = pygame.image.load("./ressources/icon.png")
+        pygame.display.set_icon(icon)
         screen = pygame.display.set_mode((self.width, self.height))
         clock = pygame.time.Clock()
+        bg_surface = pygame.Surface((self.width, self.height))
+        self.draw_background(bg_surface)
         running = True
         turn = 0
         drone_img = pygame.image.load("./ressources/drone.png").convert_alpha()
@@ -72,14 +77,14 @@ class MapVisualiser():
                     if event.key == pygame.K_SPACE:
                         self.simulation.move_drones(self.simulation.drones)
                         turn += 1
-            screen.fill("midnightblue")
+            screen.blit(bg_surface, (0, 0))
             mouse_pos = pygame.mouse.get_pos()
             hovered_hub = self.get_hovered_hub(mouse_pos)
             self.draw_connections(screen)
             self.draw_hubs(screen, hovered_hub, font)
             self.draw_drones(screen, self.simulation.drones)
             self.draw_bottom_info_bar(screen, font, hovered_hub)
-            self.draw_turn_counter(screen, font, turn)
+            self.draw_header(screen, font, turn)
             pygame.display.flip()
             clock.tick(60)
         pygame.quit()
@@ -87,6 +92,20 @@ class MapVisualiser():
     def draw_drones(self, screen: pygame.Surface, drones: list[Drone]) -> None:
         for drone in (drones):
             coords_drone = self.converter.to_pixels(drone.pos_x, drone.pos_y)
+            glow_radius = 22
+            glow_surface = pygame.Surface(
+                (glow_radius * 2, glow_radius * 2), pygame.SRCALPHA
+            )
+            pygame.draw.circle(
+                glow_surface,
+                (0, 210, 255, 60),
+                (glow_radius, glow_radius),
+                glow_radius,
+            )
+            screen.blit(
+                glow_surface,
+                (coords_drone[0] - glow_radius, coords_drone[1] - glow_radius),
+            )
             drone_rect = self.drone_img.get_rect(center=coords_drone)
             screen.blit(self.drone_img, drone_rect)
 
@@ -96,23 +115,39 @@ class MapVisualiser():
                   font: pygame.font.Font) -> None:
         map_data = self.map_data
         all_hub = [map_data.start_hub, map_data.end_hub] + map_data.hubs
+        font_sub = pygame.font.SysFont("Consolas", 10, bold=True)
         for hub in all_hub:
             px, py = self.converter.to_pixels(hub.x, hub.y)
             hub_rect = pygame.Rect(
                 px - 40 // 2, py - 40 // 2, 40, 40
             )
-            text = font.render(hub.name, True, "white")
+            color = hub.metadata.get("color", "blue")
+            text = font_sub.render(hub.name, True, "white")
             text_rect = text.get_rect(centerx=px, top=py + 35)
+
             if hub == hovered_hub:
                 pygame.draw.rect(
-                    screen, hub.metadata.get("color", "blue"),
+                    screen, color,
                     hub_rect, border_radius=10, width=2
                 )
             else:
+
+                glow_surf = pygame.Surface((60, 60), pygame.SRCALPHA)
+                glow_color = pygame.Color(color)
                 pygame.draw.rect(
-                    screen, hub.metadata.get("color", "blue"),
-                    hub_rect, border_radius=10
+                    glow_surf,
+                    (glow_color.r, glow_color.g, glow_color.b, 80),
+                    (0, 0, 60, 60),
+                    border_radius=15,
                 )
+                pygame.draw.rect(
+                    screen, (10, 22, 40), hub_rect, border_radius=10
+                )
+                pygame.draw.rect(
+                                    screen, color,
+                                    hub_rect, border_radius=10
+                                )
+            screen.blit(glow_surf, (px - 30, py - 30))
             screen.blit(text, text_rect)
 
     def draw_connections(self, screen: pygame.Surface) -> None:
@@ -125,6 +160,23 @@ class MapVisualiser():
                 coord2 = self.converter.to_pixels(zone2.x, zone2.y)
                 pygame.draw.line(screen, "gold", coord1, coord2)
 
+    def draw_background(self,
+                        screen: pygame.Surface,
+                        cell_size: int = 20,
+                        sub_divider: int = 5) -> None:
+        screen.fill((10, 22, 40))
+        color_light = (18, 38, 65)  # Discret
+        color_main = (28, 58, 95)  # Visible
+        for x in range(0, self.width, cell_size):
+            color = color_main if x % (cell_size *
+                                       sub_divider) == 0 else color_light
+            pygame.draw.line(screen, color, (x, 0), (x, self.height))
+
+        for y in range(0, self.height, cell_size):
+            color = color_main if y % (cell_size *
+                                       sub_divider) == 0 else color_light
+            pygame.draw.line(screen, color, (0, y), (self.width, y))
+
     def draw_bottom_info_bar(self,
                              screen: pygame.Surface,
                              font: pygame.font.Font,
@@ -136,8 +188,9 @@ class MapVisualiser():
         screen_width, screen_height = screen.get_size()
         zone = hovered_hub.metadata.get("zone", "normal")
         max_d = hovered_hub.metadata.get("max_drones", "//")
+        occupancy = hovered_hub.occupancy
         text = (f"Hub: {hovered_hub.name} | Zone: {zone} | Max Drones:"
-                f"{max_d})")
+                f"{max_d} | Occupancy; {occupancy})")
         text_surface = font.render(text, True, "antiquewhite2")
         text_rect = text_surface.get_rect()
         padding_x = 20
@@ -171,17 +224,29 @@ class MapVisualiser():
                 return hub
         return None
 
-    def draw_turn_counter(self,
-                          screen: pygame.Surface,
-                          font: pygame.font.Font,
-                          turn: int) -> None:
+    def draw_header(self,
+                    screen: pygame.Surface,
+                    font: pygame.font.Font,
+                    turn: int) -> None:
         """Display the turn counter of the simulaiton"""
-        text_surface = font.render(
-            f"Turn : {turn}", True, "white"
+        header_surf = pygame.Surface((260, 85), pygame.SRCALPHA)
+        header_surf.fill((10, 22, 40, 210))
+        pygame.draw.rect(
+            header_surf, (0, 210, 255), (0, 0, 260, 85), width=1,
+            border_radius=6
         )
-        screen_width = screen.get_width()
-        margin = 30
-        text_rect = text_surface.get_rect(
-            topright=(screen_width - margin, margin)
+        pygame.draw.rect(
+            header_surf, (0, 210, 255), (0, 0, 8, 85),
+            border_top_left_radius=6, border_bottom_left_radius=6
         )
-        screen.blit(text_surface, text_rect)
+        title_surface = font.render("FLY-IN SIMULATOR", True, "white")
+        drone_surface = font.render(
+            f"Active drones:  {len(self.simulation.drones)}", True, "white"
+        )
+        turn_surface = font.render(
+            f"Turn :  {turn}", True, "white"
+        )
+        header_surf.blit(drone_surface, (16, 38))
+        header_surf.blit(title_surface, (16, 12))
+        header_surf.blit(turn_surface, (16, 64))
+        screen.blit(header_surf, (20, 20))
