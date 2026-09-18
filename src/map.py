@@ -240,13 +240,15 @@ class MapVisualiser():
             border_top_left_radius=6, border_bottom_left_radius=6
         )
         title_surface = font.render("FLY-IN SIMULATOR", True, "white")
+        map_surface = font.render(f"{self.map_data.name}", True, "white")
         drone_surface = font.render(
             f"Active drones:  {len(self.simulation.drones)}", True, "white"
         )
         turn_surface = font.render(
             f"Turn :  {turn}", True, "white"
         )
-        header_surf.blit(drone_surface, (16, 38))
         header_surf.blit(title_surface, (16, 12))
-        header_surf.blit(turn_surface, (16, 64))
+        header_surf.blit(map_surface, (16, 38))
+        header_surf.blit(drone_surface, (16, 64))
+        header_surf.blit(turn_surface, (16, 85))
         screen.blit(header_surf, (20, 20))

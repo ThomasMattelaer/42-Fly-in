@@ -73,7 +73,11 @@ class SimulationEngine:
         for connection in self.map_data.connections:
             if (connection.zone1 == zone1 and connection.zone2 == zone2) or (
                     connection.zone1 == zone2 and connection.zone2 == zone1):
-                return connection.metadata.get("max_link_capacity", 1)
+                try:
+                    result = connection.metadata.get("max_link_capacity", 1)
+                    return int(result)
+                except ValueError as e:
+                    raise ValueError(e)
         return 0
 
     def add_drone_to_connection(self,
