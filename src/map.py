@@ -229,14 +229,14 @@ class MapVisualiser():
                     font: pygame.font.Font,
                     turn: int) -> None:
         """Display the turn counter of the simulaiton"""
-        header_surf = pygame.Surface((260, 85), pygame.SRCALPHA)
+        header_surf = pygame.Surface((260, 100), pygame.SRCALPHA)
         header_surf.fill((10, 22, 40, 210))
         pygame.draw.rect(
-            header_surf, (0, 210, 255), (0, 0, 260, 85), width=1,
+            header_surf, (0, 210, 255), (0, 0, 260, 100), width=1,
             border_radius=6
         )
         pygame.draw.rect(
-            header_surf, (0, 210, 255), (0, 0, 8, 85),
+            header_surf, (0, 210, 255), (0, 0, 8, 100),
             border_top_left_radius=6, border_bottom_left_radius=6
         )
         title_surface = font.render("FLY-IN SIMULATOR", True, "white")
