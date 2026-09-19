@@ -2,3 +2,10 @@ venv/
 .vscode/
 __pycache__/
 .mypy_cache/
+<<<<<<< HEAD
+=======
+__pycache__/
+*.pyc
+.venv/
+venv/
+>>>>>>> 7102984b0e1ea56297c679660b22e05302faefd8

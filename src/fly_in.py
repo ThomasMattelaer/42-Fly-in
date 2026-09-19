@@ -1,5 +1,5 @@
 from menu import Menu, MapModel
-from parser import HubModel
+from parser import HubModel, ParsingError
 from drone import Drone
 from map import MapVisualiser
 from pathfinding import dijkstra_distance, get_neighbors
@@ -13,7 +13,7 @@ class SimulationEngine:
         self.pathfinding = dijkstra_distance(map_data, map_data.end_hub.name)
 
     def init_drones(self) -> list[Drone]:
-        start_hub = map_data.start_hub
+        start_hub = self.map_data.start_hub
         drones: list[Drone] = []
         for i in range(self.map_data.drones):
             drone = Drone(drone_id=i,
@@ -22,6 +22,7 @@ class SimulationEngine:
                           pos_y=start_hub.y
                           )
             drones.append(drone)
+        start_hub.occupancy = len(drones)
         return drones
 
     def move_drones(self, drones: list[Drone]) -> None:
@@ -72,7 +73,11 @@ class SimulationEngine:
         for connection in self.map_data.connections:
             if (connection.zone1 == zone1 and connection.zone2 == zone2) or (
                     connection.zone1 == zone2 and connection.zone2 == zone1):
-                return connection.metadata.get("max_link_capacity", 1)
+                try:
+                    result = connection.metadata.get("max_link_capacity", 1)
+                    return int(result)
+                except ValueError as e:
+                    raise ValueError(e)
         return 0
 
     def add_drone_to_connection(self,
@@ -105,6 +110,11 @@ if __name__ == "__main__":
         map = MapVisualiser(map_data, simulation)
         print(simulation.pathfinding)
         map.run()
+
+    except ParsingError as e:
+        print(f"\033[31mParsing Error:\033[0m {e}", file=sys.stderr)
+        sys.exit(1)
+
     except KeyboardInterrupt:
         print("\nKeyboard Interrupt error")
         sys.exit(0)
