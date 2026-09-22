@@ -35,7 +35,8 @@ class SimulationEngine:
                 continue
             neighbors = get_neighbors(self.map_data, drone.current_hub)
             target = min(
-                neighbors, key=lambda hub_name: self.pathfinding[hub_name]
+                neighbors,
+                key=lambda hub_name: self.get_effective_cost(hub_name)
                 )
             drone.target_hub = target
             conneciton_ok = self.is_conn_free(drone.current_hub, target,
@@ -65,6 +66,16 @@ class SimulationEngine:
                 drone.pos_x = target_obj.x
                 drone.pos_y = target_obj.y
                 drone.current_hub = drone.target_hub
+
+    def get_effective_cost(self, hub_name: str) -> int:
+        base_dist = self.pathfinding[hub_name]
+        hub = self.get_hub(hub_name)
+        if not hub:
+            return base_dist
+        max_drones = hub.metadata.get("max_drones", 1)
+        waiting_drones = max(0, hub.occupancy - max_drones)
+        traffic_penalty = waiting_drones * 4
+        return base_dist + traffic_penalty
 
     def get_hub(self, hub_name: str) -> HubModel:
         map_data = self.map_data

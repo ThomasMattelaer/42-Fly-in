@@ -9,6 +9,7 @@ class HubModel(BaseModel):
     x: int
     y: int
     occupancy: int
+    reserved_drones: int
     metadata: dict[str, Any]
 
     @model_validator(mode='after')
@@ -160,6 +161,7 @@ class Parser():
                 x=x,
                 y=y,
                 occupancy=0,
+                reserved_drones=0,
                 metadata=metadata
             )
             self.seen_hub_names.add(name)
