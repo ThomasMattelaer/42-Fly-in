@@ -30,6 +30,9 @@ class SimulationEngine:
         for drone in drones:
             if drone.current_hub == self.map_data.end_hub.name:
                 continue
+            if drone.is_in_transit:
+                self.move_drone_in_transit(drone)
+                continue
             neighbors = get_neighbors(self.map_data, drone.current_hub)
             target = min(
                 neighbors, key=lambda hub_name: self.pathfinding[hub_name]
@@ -42,12 +45,26 @@ class SimulationEngine:
                 self.add_drone_to_connection(drone, target, occupancy)
                 target_obj = self.get_hub(drone.target_hub)
                 if target_obj:
-                    self.add_drones_to_hub(drone, target_obj)
-                    drone.pos_x = target_obj.x
-                    drone.pos_y = target_obj.y
-                    drone.current_hub = target
+                    travel_cost = (2 if target_obj.metadata.get("zone") ==
+                                   "restricted" else 1)
+                    if travel_cost == 1:
+                        drone.pos_x = target_obj.x
+                        drone.pos_y = target_obj.y
+                        drone.current_hub = target
+                    else:
+                        drone.turns_left -= 1
+                self.add_drones_to_hub(drone, target_obj)
             else:
                 continue
+
+    def move_drone_in_transit(self, drone: Drone) -> None:
+        drone.turns_left -= 1
+        if drone.turns_left == 0 and drone.target_hub:
+            target_obj = self.get_hub(drone.target_hub)
+            if target_obj:
+                drone.pos_x = target_obj.x
+                drone.pos_y = target_obj.y
+                drone.current_hub = drone.target_hub
 
     def get_hub(self, hub_name: str) -> HubModel:
         map_data = self.map_data

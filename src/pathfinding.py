@@ -28,7 +28,7 @@ def dijkstra_distance(map_data: MapModel, goal_hub: str) -> dict[str, int]:
 def get_hub_weight(all_hubs: list[HubModel], hub_name: str) -> int:
     """Calcul for the weight of the movement of the drone to come in
     this zone"""
-    hub = next(hub for hub in all_hubs if hub.name == hub_name)
+    hub = next((hub for hub in all_hubs if hub.name == hub_name), None)
     if not hub:
         return 4
     zone_type = hub.metadata.get("zone", "normal")

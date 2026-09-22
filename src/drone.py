@@ -7,11 +7,14 @@ class Drone ():
                  current_hub: str,
                  pos_x: int,
                  pos_y: int,
-                 in_transit: bool = False,
                  target_hub: Optional[str] = None) -> None:
         self.drone_id = drone_id
         self.current_hub = current_hub
         self.target_hub = target_hub
         self.pos_x = pos_x
         self.pos_y = pos_y
-        self.in_transit = in_transit
+        self.turns_left: int = 0
+
+    @property
+    def is_in_transit(self) -> bool:
+        return self.turns_left > 0
