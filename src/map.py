@@ -45,8 +45,8 @@ class MapVisualiser():
     def __init__(self,
                  map_data: MapModel,
                  simulation: "SimulationEngine",
-                 width: int = 1280,
-                 height: int = 720
+                 width: int = 1800,
+                 height: int = 1000
                  ) -> None:
         self.map_data = map_data
         self.simulation = simulation
@@ -76,7 +76,14 @@ class MapVisualiser():
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_SPACE:
                         self.simulation.move_drones(self.simulation.drones)
-                        turn += 1
+                        if not self.simulation.is_finished:
+                            turn += 1
+                    elif event.key == pygame.K_r:
+                        turn = 0
+                        self.simulation.reset()
+                        self.draw_background(bg_surface)
+                        self.draw_drones(screen, self.simulation.drones)
+                        pygame.display.flip()
             screen.blit(bg_surface, (0, 0))
             mouse_pos = pygame.mouse.get_pos()
             hovered_hub = self.get_hovered_hub(mouse_pos)
@@ -122,6 +129,11 @@ class MapVisualiser():
                 px - 40 // 2, py - 40 // 2, 40, 40
             )
             color = hub.metadata.get("color", "blue")
+            color_str = hub.metadata.get("color", "blue")
+            try:
+                color = pygame.Color(color_str)
+            except (ValueError, TypeError):
+                color = pygame.Color("magenta")
             text = font_sub.render(hub.name, True, "white")
             text_rect = text.get_rect(centerx=px, top=py + 35)
 
@@ -133,7 +145,11 @@ class MapVisualiser():
             else:
 
                 glow_surf = pygame.Surface((60, 60), pygame.SRCALPHA)
-                glow_color = pygame.Color(color)
+                try:
+                    glow_color = pygame.Color(color)
+                except ValueError:
+                    glow_color = pygame.Color("magenta")
+
                 pygame.draw.rect(
                     glow_surf,
                     (glow_color.r, glow_color.g, glow_color.b, 80),
@@ -187,10 +203,10 @@ class MapVisualiser():
             return
         screen_width, screen_height = screen.get_size()
         zone = hovered_hub.metadata.get("zone", "normal")
-        max_d = hovered_hub.metadata.get("max_drones", "//")
+        max_d = hovered_hub.metadata.get("max_drones", " ")
         occupancy = hovered_hub.occupancy
         text = (f"Hub: {hovered_hub.name} | Zone: {zone} | Max Drones:"
-                f"{max_d} | Occupancy; {occupancy})")
+                f"{max_d} | Occupancy: {occupancy})")
         text_surface = font.render(text, True, "antiquewhite2")
         text_rect = text_surface.get_rect()
         padding_x = 20

@@ -11,6 +11,10 @@ class SimulationEngine:
         self.map_data = map_data
         self.drones: list[Drone] = self.init_drones()
         self.pathfinding = dijkstra_distance(map_data, map_data.end_hub.name)
+        all_hubs = ([self.map_data.start_hub, self.map_data.end_hub]
+                    + self.map_data.hubs)
+        self.hubs_by_name: dict[str, HubModel] = {hub.name:
+                                                  hub for hub in all_hubs}
 
     def init_drones(self) -> list[Drone]:
         start_hub = self.map_data.start_hub
@@ -38,23 +42,33 @@ class SimulationEngine:
                 neighbors,
                 key=lambda hub_name: self.get_effective_cost(hub_name)
                 )
-            drone.target_hub = target
+            if (drone.target_hub != target):
+                if drone.target_hub:
+                    old_target = self.get_hub(drone.target_hub)
+                    if old_target:
+                        old_target.reserved_drones -= 1
+                new_target = self.get_hub(target)
+                if new_target:
+                    new_target.reserved_drones += 1
+                drone.target_hub = target
+            target_obj = self.get_hub(target)
             conneciton_ok = self.is_conn_free(drone.current_hub, target,
                                               occupancy)
             hub_ok = self.is_hub_free(target)
             if (conneciton_ok and hub_ok):
                 self.add_drone_to_connection(drone, target, occupancy)
-                target_obj = self.get_hub(drone.target_hub)
                 if target_obj:
                     travel_cost = (2 if target_obj.metadata.get("zone") ==
                                    "restricted" else 1)
                     if travel_cost == 1:
                         drone.pos_x = target_obj.x
                         drone.pos_y = target_obj.y
-                        drone.current_hub = target
+                        target_obj.reserved_drones -= 1
+                        drone.target_hub = None
                     else:
-                        drone.turns_left -= 1
-                self.add_drones_to_hub(drone, target_obj)
+                        drone.turns_left = 1
+                    self.add_drones_to_hub(drone, target_obj)
+                    drone.current_hub = target
             else:
                 continue
 
@@ -65,7 +79,8 @@ class SimulationEngine:
             if target_obj:
                 drone.pos_x = target_obj.x
                 drone.pos_y = target_obj.y
-                drone.current_hub = drone.target_hub
+                target_obj.reserved_drones -= 1
+                drone.target_hub = None
 
     def get_effective_cost(self, hub_name: str) -> int:
         base_dist = self.pathfinding[hub_name]
@@ -73,17 +88,19 @@ class SimulationEngine:
         if not hub:
             return base_dist
         max_drones = hub.metadata.get("max_drones", 1)
-        waiting_drones = max(0, hub.occupancy - max_drones)
+        try:
+            waiting_drones = max(0, hub.reserved_drones -
+                                 (int(max_drones) - 1))
+        except ValueError as e:
+            raise ValueError(e)
+
         traffic_penalty = waiting_drones * 4
         return base_dist + traffic_penalty
 
     def get_hub(self, hub_name: str) -> HubModel:
-        map_data = self.map_data
-        all_hubs = [map_data.start_hub, map_data.end_hub] + map_data.hubs
-        hubs_by_name = {hub.name: hub for hub in all_hubs}
-        if hub_name not in hubs_by_name:
+        if hub_name not in self.hubs_by_name:
             raise ValueError(f"Hub: {hub_name} hasn't been found")
-        return hubs_by_name[hub_name]
+        return self.hubs_by_name[hub_name]
 
     def is_conn_free(self,
                      zone1: str,
@@ -128,6 +145,17 @@ class SimulationEngine:
             if hub.name == target_hub:
                 return hub.occupancy < int(hub.metadata.get("max_drones", 1))
         return False
+
+    def reset(self) -> None:
+        self.drones = self.init_drones()
+        for hub in self.hubs_by_name.values():
+            hub.reserved_drones = 0
+            hub.occupancy = 0
+
+    @property
+    def is_finished(self) -> bool:
+        return all(drone.current_hub == self.map_data.end_hub.name
+                   for drone in self.drones)
 
 
 if __name__ == "__main__":
