@@ -17,7 +17,7 @@ install: requirements.txt
 	$(PIP) install -r requirements.txt
 	rm -rf maps
 	rm -f maps.tar.gz
-	$(PYTHON) -m wget https://cdn.intra.42.fr/document/document/55008/maps.tar.gz
+	$(PYTHON) -m wget https://cdn.intra.42.fr/document/document/57653/maps.tar.gz
 	tar -xvf maps.tar.gz
 	rm -rf maps.tar.gz
 
