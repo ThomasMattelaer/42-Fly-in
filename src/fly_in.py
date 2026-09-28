@@ -32,6 +32,8 @@ class SimulationEngine:
         self.hubs_by_name: dict[str, HubModel] = {
             hub.name: hub for hub in all_hubs
         }
+        self.hub_usage: dict[tuple[str, int], int] = {}
+        self.conn_usage: dict[tuple[tuple[str, str], int], int] = {}
 
     def init_drones(self) -> list[Drone]:
         """Creates and places initial drones at the start hub.
@@ -120,7 +122,7 @@ class SimulationEngine:
                 drone.target_hub = None
 
     def get_effective_cost(self, hub_name: str) -> int:
-        """Calculates distance plus traffic penalty for a hub.
+        """Calculates distance plus Total dist for a hub.
 
         Args:
             hub_name (str): Name of target hub.
@@ -135,7 +137,7 @@ class SimulationEngine:
         max_drones = hub.metadata.get("max_drones", 1)
         try:
             waiting_drones = max(
-                0, hub.reserved_drones - (int(max_drones) - 1)
+                0, (hub.reserved_drones) - (int(max_drones) - 1)
             )
         except ValueError as e:
             raise ValueError(e)
@@ -235,6 +237,61 @@ class SimulationEngine:
             if hub.name == target_hub:
                 return hub.occupancy < int(hub.metadata.get("max_drones", 1))
         return False
+
+    def conn_key(self, zone1: str, zone2: str) -> tuple[str, str]:
+        """sort the connection A-B == B-A
+        Args: zone(str): the name of the zone of the connexion
+        returns: a tuple of the connexion
+        """
+        return (zone1, zone2) if zone1 < zone2 else (zone2, zone1)
+
+    def travel_cost(self, hub_name: str) -> int:
+        """Check the cost of travelling to this hub
+        Args: hub_name: the destiantion
+        returns: a int of 1 or 2
+        """
+        hub = self.get_hub(hub_name)
+        zone = hub.metadata.get("zone", "normal")
+        if zone == "restricted":
+            return 2
+        return 1
+
+    def hub_has_room(self, hub_name: str, turn: int) -> bool:
+        """check if the hub has space at a specific timing
+        args: hub_name: the name of the destination turn:the time we at
+        returns: a bool
+        """
+        hub = self.get_hub(hub_name)
+        if (
+            hub_name == self.map_data.start_hub.name
+                or hub_name == self.map_data.end_hub.name):
+            return True
+        try:
+            max_drones = hub.metadata.get("max_drones", 1)
+            return self.hub_usage[(hub_name, turn)] < int(max_drones)
+        except ValueError as e:
+            raise ValueError(e)
+
+    def conn_has_room(self, zone1: str, zone2: str, turn: int) -> bool:
+        """check if the conn has space at a specific timing
+            args: zones: the name of the connexion turn:the time we at
+            returns: a bool
+        """
+        conn = self.conn_key(zone1, zone2)
+        return (self.conn_usage[(conn, turn)] <
+                self.get_max_link_capacity(zone1, zone2))
+
+    def drone_can_move(self, hub_name: str, next_hub: str, turn: int) -> bool:
+
+        cost = self.travel_cost(next_hub)
+        if hub_name == next_hub:
+            return self.hub_has_room(hub_name, turn + 1)
+        for x in range(cost):
+            if not (self.conn_has_room(hub_name, next_hub, turn + x)):
+                return False
+        if not self.hub_has_room(next_hub, turn + cost):
+            return False
+        return True
 
     def reset(self) -> None:
         """Resets simulation state, drones, and hub counts."""
