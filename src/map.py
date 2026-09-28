@@ -3,6 +3,7 @@ import pygame
 from drone import Drone
 from parser import HubModel, MapModel
 
+
 if TYPE_CHECKING:
     from fly_in import SimulationEngine
 

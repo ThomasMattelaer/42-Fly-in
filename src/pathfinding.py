@@ -1,7 +1,6 @@
 import heapq
 import sys
-from map import MapModel
-from parser import HubModel
+from parser import HubModel, MapModel
 
 
 def dijkstra_distance(map_data: MapModel, goal_hub: str) -> dict[str, int]:

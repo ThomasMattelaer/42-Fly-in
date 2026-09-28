@@ -1,8 +1,8 @@
 import sys
 from drone import Drone
 from map import MapVisualiser
-from menu import MapModel, Menu
-from parser import HubModel, ParsingError
+from menu import Menu
+from parser import HubModel, ParsingError, MapModel
 from pathfinding import dijkstra_distance, get_neighbors
 
 

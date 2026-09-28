@@ -26,7 +26,7 @@ class Menu:
             menu_highlight_style=("bg_purple",),
         )
         entry_index = terminal_menu.show()
-        result = options[entry_index]
+        result: str = options[entry_index]
         return result
 
     def list_files(self, directory: str) -> list[str]:
