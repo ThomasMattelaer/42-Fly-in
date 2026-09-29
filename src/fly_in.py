@@ -4,7 +4,8 @@ from drone import Drone
 from map import MapVisualiser
 from menu import Menu
 from parser import HubModel, ParsingError, MapModel
-from pathfinding import dijkstra_distance, get_neighbors
+from pathfinding import (dijkstra_distance, get_neighbors,
+                         can_reach_goal_from_start)
 
 
 class SimulationEngine:
@@ -271,15 +272,16 @@ if __name__ == "__main__":
     menu = Menu()
     try:
         map_data = menu.select_map_menu()
+        if not can_reach_goal_from_start(map_data):
+            print(can_reach_goal_from_start)
+            raise ParsingError(1, "Graph is not terminated")
         simulation = SimulationEngine(map_data)
         map = MapVisualiser(map_data, simulation)
         print(simulation.pathfinding)
         map.run()
-
     except ParsingError as e:
         print(f"\033[31mParsing Error:\033[0m {e}", file=sys.stderr)
         sys.exit(1)
-
     except KeyboardInterrupt:
         print("\nKeyboard Interrupt error")
         sys.exit(0)

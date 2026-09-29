@@ -109,3 +109,21 @@ def can_reach_start_from(
                 visited.add(neighbor)
                 stack.append(neighbor)
     return False
+
+
+def can_reach_goal_from_start(map_data: MapModel) -> bool:
+    start_hub = map_data.start_hub.name
+    goal_hub = map_data.end_hub.name
+    stack = [start_hub]
+    visited: set[str] = {start_hub}
+    if start_hub == goal_hub:
+        return True
+    while stack:
+        current_hub = stack.pop()
+        if current_hub == goal_hub:
+            return True
+        for neighbor in get_neighbors(map_data, current_hub):
+            if neighbor not in visited:
+                visited.add(neighbor)
+                stack.append(neighbor)
+    return False
