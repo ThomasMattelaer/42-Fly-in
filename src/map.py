@@ -134,9 +134,9 @@ class MapVisualiser:
                     running = False
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_SPACE:
-                        self.simulation.move_drones(self.simulation.drones)
                         if not self.simulation.is_finished:
                             turn += 1
+                            self.simulation.move_drones(turn)
                     elif event.key == pygame.K_r:
                         turn = 0
                         self.simulation.reset()
@@ -296,7 +296,7 @@ class MapVisualiser:
             return
         screen_width, screen_height = screen.get_size()
         zone = hovered_hub.metadata.get("zone", "normal")
-        max_d = hovered_hub.metadata.get("max_drones", " ")
+        max_d = hovered_hub.metadata.get("max_drones", "1")
         occupancy = hovered_hub.occupancy
         text = (
             f"Hub: {hovered_hub.name} | Zone: {zone} | Max Drones:"

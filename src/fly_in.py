@@ -1,4 +1,5 @@
 import sys
+import heapq
 from drone import Drone
 from map import MapVisualiser
 from menu import Menu
@@ -23,8 +24,6 @@ class SimulationEngine:
             map_data (MapModel): Parsed map data to simulate.
         """
         self.map_data = map_data
-        self.drones: list[Drone] = self.init_drones()
-        self.pathfinding = dijkstra_distance(map_data, map_data.end_hub.name)
         all_hubs = (
             [self.map_data.start_hub, self.map_data.end_hub]
             + self.map_data.hubs
@@ -32,8 +31,11 @@ class SimulationEngine:
         self.hubs_by_name: dict[str, HubModel] = {
             hub.name: hub for hub in all_hubs
         }
+        self.drones: list[Drone] = self.init_drones()
+        self.pathfinding = dijkstra_distance(map_data, map_data.end_hub.name)
         self.hub_usage: dict[tuple[str, int], int] = {}
         self.conn_usage: dict[tuple[tuple[str, str], int], int] = {}
+        self.plan_all(max_turn=50)
 
     def init_drones(self) -> list[Drone]:
         """Creates and places initial drones at the start hub.
@@ -54,96 +56,28 @@ class SimulationEngine:
         start_hub.occupancy = len(drones)
         return drones
 
-    def move_drones(self, drones: list[Drone]) -> None:
-        """Updates positions and states of all drones for one turn.
+    def move_drones(self, current_turn: int) -> None:
+        for drone in self.drones:
+            path: list[tuple[str, int]] = drone.path
+            for state in path:
+                hub_name, turn = state
+                if turn == current_turn:
+                    old_hub = self.get_hub(drone.current_hub)
+                    hub = self.get_hub(hub_name)
+                    drone.pos_x = hub.x
+                    drone.current_hub = hub_name
+                    drone.pos_y = hub.y
+                    old_hub.occupancy -= 1
+                    hub.occupancy += 1
 
-        Args:
-            drones (list[Drone]): Drones to process.
-        """
-        occupancy: dict[tuple[str, str], int] = {}
-        for drone in drones:
-            if drone.current_hub == self.map_data.end_hub.name:
-                continue
-            if drone.is_in_transit:
-                self.move_drone_in_transit(drone)
-                continue
-            neighbors = get_neighbors(self.map_data, drone.current_hub)
-            target = min(
-                neighbors,
-                key=lambda hub_name: self.get_effective_cost(hub_name)
-            )
-            if drone.target_hub != target:
-                if drone.target_hub:
-                    old_target = self.get_hub(drone.target_hub)
-                    if old_target:
-                        old_target.reserved_drones -= 1
-                new_target = self.get_hub(target)
-                if new_target:
-                    new_target.reserved_drones += 1
-                drone.target_hub = target
-            target_obj = self.get_hub(target)
-            conneciton_ok = self.is_conn_free(
-                drone.current_hub, target, occupancy
-            )
-            hub_ok = self.is_hub_free(target)
-            if conneciton_ok and hub_ok:
-                self.add_drone_to_connection(drone, target, occupancy)
-                if target_obj:
-                    travel_cost = (
-                        2
-                        if target_obj.metadata.get("zone") == "restricted"
-                        else 1
-                    )
-                    if travel_cost == 1:
-                        drone.pos_x = target_obj.x
-                        drone.pos_y = target_obj.y
-                        target_obj.reserved_drones -= 1
-                        drone.target_hub = None
-                    else:
-                        drone.turns_left = 1
-                    self.add_drones_to_hub(drone, target_obj)
-                    drone.current_hub = target
-            else:
-                continue
-
-    def move_drone_in_transit(self, drone: Drone) -> None:
-        """Advances a transit drone by one turn.
-
-        Args:
-            drone (Drone): Drone currently moving between hubs.
-        """
-        drone.turns_left -= 1
-        if drone.turns_left == 0 and drone.target_hub:
-            target_obj = self.get_hub(drone.target_hub)
-            if target_obj:
-                drone.pos_x = target_obj.x
-                drone.pos_y = target_obj.y
-                target_obj.reserved_drones -= 1
-                drone.target_hub = None
-
-    def get_effective_cost(self, hub_name: str) -> int:
-        """Calculates distance plus Total dist for a hub.
-
-        Args:
-            hub_name (str): Name of target hub.
-
-        Returns:
-            int: Total cost including congestion penalties.
-        """
-        base_dist = self.pathfinding[hub_name]
-        hub = self.get_hub(hub_name)
-        if not hub:
-            return base_dist
-        max_drones = hub.metadata.get("max_drones", 1)
-        try:
-            waiting_drones = max(
-                0, (hub.reserved_drones) - (int(max_drones) - 1)
-            )
-        except ValueError as e:
-            raise ValueError(e)
-
-        traffic_penalty = waiting_drones * 4
-        return base_dist + traffic_penalty
+    def plan_all(self, max_turn: int) -> None:
+        for drone in self.drones:
+            path = self.plan_drone(max_turn)
+            if path is None:
+                break
+            drone.path = path
+            print(path)
+            self.reserve(path)
 
     def get_hub(self, hub_name: str) -> HubModel:
         """Retrieves a hub object by name.
@@ -157,25 +91,6 @@ class SimulationEngine:
         if hub_name not in self.hubs_by_name:
             raise ValueError(f"Hub: {hub_name} hasn't been found")
         return self.hubs_by_name[hub_name]
-
-    def is_conn_free(
-        self, zone1: str, zone2: str, occupancy: dict[tuple[str, str], int]
-    ) -> bool:
-        """Checks if a connection has available capacity.
-
-        Args:
-            zone1 (str): First hub name.
-            zone2 (str): Second hub name.
-            occupancy (dict): Current link usage mapping.
-
-        Returns:
-            bool: True if connection capacity is not exceeded.
-        """
-        a, b = sorted((zone1, zone2))
-        link_key: tuple[str, str] = (a, b)
-        current_usage = occupancy.get(link_key, 0)
-        max_link_capacity = self.get_max_link_capacity(zone1, zone2)
-        return current_usage < max_link_capacity
 
     def get_max_link_capacity(self, zone1: str, zone2: str) -> int:
         """Gets maximum capacity for a connection.
@@ -197,46 +112,6 @@ class SimulationEngine:
                 except ValueError as e:
                     raise ValueError(e)
         return 0
-
-    def add_drone_to_connection(
-        self, drone: Drone, target: str, occupancy: dict[tuple[str, str], int]
-    ) -> None:
-        """Increments current usage for a connection.
-
-        Args:
-            drone (Drone): Drone traversing the link.
-            target (str): Destination hub name.
-            occupancy (dict): Current link usage mapping.
-        """
-        a, b = sorted((drone.current_hub, target))
-        occupancy[(a, b)] = occupancy.get((a, b), 0) + 1
-
-    def add_drones_to_hub(self, drone: Drone, target_obj: HubModel) -> None:
-        """Transfers drone occupancy from current to target hub.
-
-        Args:
-            drone (Drone): Moving drone.
-            target_obj (HubModel): Destination hub.
-        """
-        current_hub = self.get_hub(drone.current_hub)
-        current_hub.occupancy -= 1
-        target_obj.occupancy += 1
-
-    def is_hub_free(self, target_hub: str) -> bool:
-        """Checks if target hub has available drone capacity.
-
-        Args:
-            target_hub (str): Hub name to check.
-
-        Returns:
-            bool: True if hub can accept another drone.
-        """
-        if target_hub == self.map_data.end_hub.name:
-            return True
-        for hub in self.map_data.hubs:
-            if hub.name == target_hub:
-                return hub.occupancy < int(hub.metadata.get("max_drones", 1))
-        return False
 
     def conn_key(self, zone1: str, zone2: str) -> tuple[str, str]:
         """sort the connection A-B == B-A
@@ -268,7 +143,7 @@ class SimulationEngine:
             return True
         try:
             max_drones = hub.metadata.get("max_drones", 1)
-            return self.hub_usage[(hub_name, turn)] < int(max_drones)
+            return self.hub_usage.get((hub_name, turn), 0) < int(max_drones)
         except ValueError as e:
             raise ValueError(e)
 
@@ -278,7 +153,7 @@ class SimulationEngine:
             returns: a bool
         """
         conn = self.conn_key(zone1, zone2)
-        return (self.conn_usage[(conn, turn)] <
+        return (self.conn_usage.get((conn, turn), 0) <
                 self.get_max_link_capacity(zone1, zone2))
 
     def drone_can_move(self, hub_name: str, next_hub: str, turn: int) -> bool:
@@ -286,18 +161,75 @@ class SimulationEngine:
         cost = self.travel_cost(next_hub)
         if hub_name == next_hub:
             return self.hub_has_room(hub_name, turn + 1)
-        for x in range(cost):
-            if not (self.conn_has_room(hub_name, next_hub, turn + x)):
-                return False
+        if not (self.conn_has_room(hub_name, next_hub, turn)):
+            return False
         if not self.hub_has_room(next_hub, turn + cost):
             return False
         return True
 
+    def plan_drone(self, max_turn: int) -> list[tuple[str, int]] | None:
+        start = self.map_data.start_hub.name
+        goal = self.map_data.end_hub.name
+        open_set: list[tuple[int, int, str]] = []
+        came_from: dict[tuple[str, int], tuple[str, int]] = {}
+        seen = set()
+        heapq.heappush(open_set, (((0 + self.pathfinding[start]), 0, start)))
+        seen.add((start, 0))
+        while open_set:
+            total, turn, hub = heapq.heappop(open_set)
+            if hub == goal:
+                return self.rebuild_path((hub, turn), came_from)
+            if turn >= max_turn:
+                continue
+            options = [hub, *get_neighbors(self.map_data, hub)]
+            for neighbor in options:
+                if not self.drone_can_move(hub, neighbor, turn):
+                    continue
+                if neighbor == hub:
+                    arrive = turn + 1
+                else:
+                    arrive = turn + self.travel_cost(neighbor)
+                new_state = (neighbor, arrive)
+                if new_state in seen:
+                    continue
+                seen.add(new_state)
+                came_from[new_state] = (hub, turn)
+                heapq.heappush(open_set,
+                               ((arrive + self.pathfinding[neighbor]), arrive,
+                                neighbor))
+        return None
+
+    def reserve(self, path: list[tuple[str, int]]) -> None:
+        for hub, turn in path:
+            state = (hub, turn)
+            self.hub_usage[state] = self.hub_usage.get(state, 0) + 1
+        for i in range(len(path) - 1):
+            hub1, turn1 = path[i]
+            hub2, turn2 = path[i + 1]
+            if hub1 == hub2:
+                continue
+            conn = self.conn_key(hub1, hub2)
+            key = (conn, turn1)
+            self.conn_usage[key] = self.conn_usage.get(key, 0) + 1
+
+    def rebuild_path(self,
+                     last_hub: tuple[str, int],
+                     came_from: dict[tuple[str, int], tuple[str, int]]
+                     ) -> list[tuple[str, int]]:
+        path = [last_hub]
+        while last_hub in came_from:
+            last_hub = came_from[last_hub]
+            path.append(last_hub)
+        path.reverse()
+        return path
+
     def reset(self) -> None:
         """Resets simulation state, drones, and hub counts."""
         self.drones = self.init_drones()
+        self.hub_usage.clear()
+        self.conn_usage.clear()
+        self.plan_all(max_turn=50)
         for hub in self.hubs_by_name.values():
-            hub.reserved_drones = 0
             hub.occupancy = 0
 
     @property

@@ -35,6 +35,7 @@ class Drone ():
         self.pos_x = pos_x
         self.pos_y = pos_y
         self.turns_left: int = 0
+        self.path: list[tuple[str, int]] = []
 
     @property
     def is_in_transit(self) -> bool:

@@ -21,7 +21,6 @@ class HubModel(BaseModel):
     x: int
     y: int
     occupancy: int
-    reserved_drones: int
     metadata: dict[str, Any]
 
     @model_validator(mode="after")
@@ -230,7 +229,6 @@ class Parser:
         Returns:
             HubModel: Parsed hub instance.
         """
-        print(data)
         mandatory, _, optional = data.partition("[")
         left_elements = mandatory.split()
         if len(left_elements) != 3:
@@ -254,7 +252,6 @@ class Parser:
                 x=x,
                 y=y,
                 occupancy=0,
-                reserved_drones=0,
                 metadata=metadata,
             )
             self.seen_hub_names.add(name)

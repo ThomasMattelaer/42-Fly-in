@@ -50,16 +50,16 @@ def get_hub_weight(all_hubs: list[HubModel], hub_name: str) -> int:
     """
     hub = next((hub for hub in all_hubs if hub.name == hub_name), None)
     if not hub:
-        return 4
+        return 1
     zone_type = hub.metadata.get("zone", "normal")
     if zone_type == "blocked":
         return sys.maxsize
     if zone_type == "restricted":
-        return 8
+        return 2
     if zone_type == "priority":
-        return 3
+        return 1
     else:
-        return 4
+        return 1
 
 
 def get_neighbors(map_data: MapModel, current_hub: str) -> list[str]:
