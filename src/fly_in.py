@@ -69,6 +69,29 @@ class SimulationEngine:
                     drone.pos_y = hub.y
                     old_hub.occupancy -= 1
                     hub.occupancy += 1
+                else:
+                    for connexion in self.conn_usage:
+                        conn, turn_conn = connexion
+                        if turn_conn == current_turn:
+                            zone1, zone2 = conn
+        self.print_output(current_turn)
+
+    def print_output(self, current_turn: int) -> None:
+        turn_movements = []
+        for drone in self.drones:
+            for i in range(len(drone.path) - 1):
+                hub, turn = drone.path[i]
+                next_hub, next_turn = drone.path[i + 1]
+                if current_turn - 1 == turn:
+                    if hub == next_hub:
+                        continue
+                    cost = self.travel_cost(next_hub)
+                    if cost > 1:
+                        conn_name = f"D{drone.drone_id}: {hub}-{next_hub}"
+                        turn_movements.append(conn_name)
+                    else:
+                        turn_movements.append(f"D{drone.drone_id}: {next_hub}")
+        print(" ".join(turn_movements))
 
     def plan_all(self, max_turn: int) -> None:
         for drone in self.drones:
@@ -76,7 +99,6 @@ class SimulationEngine:
             if path is None:
                 break
             drone.path = path
-            print(path)
             self.reserve(path)
 
     def get_hub(self, hub_name: str) -> HubModel:

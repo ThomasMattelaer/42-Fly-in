@@ -274,6 +274,11 @@ class Parser:
         if len(left_elements) != 2:
             raise ParsingError(line_num, "Invalid Format")
         zone_1, zone_2 = [elem.strip() for elem in left_elements]
+        if zone_1 == zone_2:
+            raise ParsingError(
+                line_num,
+                "Connection cannot be the same"
+            )
         if zone_1 not in self.seen_hub_names:
             raise ParsingError(
                 line_num,
