@@ -34,15 +34,4 @@ class Drone ():
         self.target_hub = target_hub
         self.pos_x = pos_x
         self.pos_y = pos_y
-        self.turns_left: int = 0
         self.path: list[tuple[str, int]] = []
-
-    @property
-    def is_in_transit(self) -> bool:
-        """Checks whether the drone is currently moving between hubs.
-
-        Returns:
-            bool: True if the drone has turns remaining in transit,
-            False otherwise.
-        """
-        return self.turns_left > 0

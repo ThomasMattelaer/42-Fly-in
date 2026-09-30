@@ -58,6 +58,11 @@ class SimulationEngine:
         return drones
 
     def move_drones(self, current_turn: int) -> None:
+        """Moves all drones to their positions for the current turn.
+
+        Args:
+            current_turn (int): Current simulation turn.
+        """
         for drone in self.drones:
             path: list[tuple[str, int]] = drone.path
             for state in path:
@@ -78,6 +83,11 @@ class SimulationEngine:
         self.print_output(current_turn)
 
     def print_output(self, current_turn: int) -> None:
+        """Prints the movements performed by drones for the current turn.
+
+        Args:
+            current_turn (int): Current simulation turn.
+        """
         turn_movements = []
         for drone in self.drones:
             for i in range(len(drone.path) - 1):
@@ -95,6 +105,11 @@ class SimulationEngine:
         print(" ".join(turn_movements))
 
     def plan_all(self, max_turn: int) -> None:
+        """Plans and reserves a path for every drone.
+
+        Args:
+            max_turn (int): Maximum number of turns allowed for pathfinding.
+        """
         for drone in self.drones:
             path = self.plan_drone(max_turn)
             if path is None:
@@ -180,6 +195,16 @@ class SimulationEngine:
                 self.get_max_link_capacity(zone1, zone2))
 
     def drone_can_move(self, hub_name: str, next_hub: str, turn: int) -> bool:
+        """Checks whether a drone can move to a target hub at a given turn.
+
+        Args:
+            hub_name (str): Name of the drone's current hub.
+            next_hub (str): Name of the target hub.
+            turn (int): Current simulation turn.
+
+        Returns:
+            bool: True if the drone can make the move, otherwise False.
+        """
 
         cost = self.travel_cost(next_hub)
         if hub_name == next_hub:
@@ -191,6 +216,15 @@ class SimulationEngine:
         return True
 
     def plan_drone(self, max_turn: int) -> list[tuple[str, int]] | None:
+        """Finds a time-aware path from the start hub to the goal hub.
+
+        Args:
+            max_turn (int): Maximum number of turns allowed for pathfinding.
+
+        Returns:
+            list[tuple[str, int]] | None: Planned path with hub names and
+                arrival turns, or None if no path is found.
+        """
         start = self.map_data.start_hub.name
         goal = self.map_data.end_hub.name
         open_set: list[tuple[int, int, str]] = []
@@ -223,6 +257,12 @@ class SimulationEngine:
         return None
 
     def reserve(self, path: list[tuple[str, int]]) -> None:
+        """Reserves the hubs and connections used by a planned path.
+
+        Args:
+            path (list[tuple[str, int]]): Planned path with hub names and
+                arrival turns.
+        """
         for hub, turn in path:
             state = (hub, turn)
             self.hub_usage[state] = self.hub_usage.get(state, 0) + 1
@@ -239,6 +279,16 @@ class SimulationEngine:
                      last_hub: tuple[str, int],
                      came_from: dict[tuple[str, int], tuple[str, int]]
                      ) -> list[tuple[str, int]]:
+        """Reconstructs a path from the A* predecessor mapping.
+
+        Args:
+            last_hub (tuple[str, int]): Final hub and turn of the path.
+            came_from (dict[tuple[str, int], tuple[str, int]]): Mapping of
+                each state to its predecessor state.
+
+        Returns:
+            list[tuple[str, int]]: Reconstructed path in chronological order.
+        """
         path = [last_hub]
         while last_hub in came_from:
             last_hub = came_from[last_hub]
